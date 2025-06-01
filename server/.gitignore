@@ -9,14 +9,9 @@ node_modules/
 # Log files
 npm-debug.log*
 
-# OS-specific files
-.DS_Store
-Thumbs.db
 
 # IDEs and editors
 .vscode/
-.idea/
-*.sw?
 
 # Git
 .git/
