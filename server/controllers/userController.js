@@ -31,13 +31,13 @@ exports.createUser = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { loginEmail, loginPassword } = req.body;
   try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [loginEmail]);
     const user = result.rows[0];
     if (!user) return res.status(401).json({ error: 'Invalid email or password' });
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = await bcrypt.compare(loginPassword, user.password_hash);
     if (!isMatch) return res.status(401).json({ error: 'Invalid email or password' });
 
     const token = generateToken(user);

@@ -1,0 +1,78 @@
+<div class="auth-container">
+    <div class="auth-forms">
+    <!-- Login Form -->
+    <form class="auth-form" [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()">
+      <h2>Login</h2>
+      <div>
+        <label for="loginEmail">Email</label><br>
+        <input type="email" id="loginEmail" formControlName="loginEmail">
+        <div *ngIf="loginForm.get('loginEmail')?.invalid && (loginForm.get('loginEmail')?.touched || loginForm.get('loginEmail')?.dirty)" style="color:red;font-size:0.9em;">
+          <span *ngIf="loginForm.get('loginEmail')?.errors?.['required']">Email is required.</span>
+          <span *ngIf="loginForm.get('loginEmail')?.errors?.['email']">Invalid email.</span>
+        </div>
+      </div>
+      <div>
+        <label for="loginPassword">Password</label><br>
+        <input type="password" id="loginPassword" formControlName="loginPassword">
+        <div *ngIf="loginForm.get('loginPassword')?.invalid && (loginForm.get('loginPassword')?.touched || loginForm.get('loginPassword')?.dirty)" style="color:red;font-size:0.9em;">
+          <span *ngIf="loginForm.get('loginPassword')?.errors?.['required']">Password is required.</span>
+          <span *ngIf="loginForm.get('loginPassword')?.errors?.['minlength']">Password must be at least 6 characters.</span>
+        </div>
+      </div>
+      <button type="submit" [disabled] = "loginForm.invalid">Login</button>
+    </form>
+
+    <div class="vertical-divider"></div>
+
+    <!-- Signup Form -->
+    <form class="auth-form" [formGroup]="signupForm" (ngSubmit)="onSignupSubmit()">
+      <h2>Sign Up</h2>
+      <div>
+        <label for="signupName">Name</label><br>
+        <input type="text" id="signupName" formControlName="signupName">
+        <div *ngIf="signupForm.get('signupName')?.invalid && (signupForm.get('signupName')?.touched || signupForm.get('signupName')?.dirty)" style="color:red;font-size:0.9em;">
+          <span *ngIf="signupForm.get('signupName')?.errors?.['required']">Name is required.</span>
+        </div>
+      </div>
+      <div>
+        <label for="signupEmail">Email</label><br>
+        <input type="email" id="signupEmail" formControlName="signupEmail">
+        <div *ngIf="signupForm.get('signupEmail')?.invalid && (signupForm.get('signupEmail')?.touched || signupForm.get('signupEmail')?.dirty)" style="color:red;font-size:0.9em;">
+          <span *ngIf="signupForm.get('signupEmail')?.errors?.['required']">Email is required.</span>
+          <span *ngIf="signupForm.get('signupEmail')?.errors?.['email']">Invalid email.</span>
+        </div>
+      </div>
+      <div>
+        <label for="signupPassword">Password</label><br>
+        <input type="password" id="signupPassword" formControlName="signupPassword">
+        <div *ngIf="signupForm.get('signupPassword')?.invalid && (signupForm.get('signupPassword')?.touched || signupForm.get('signupPassword')?.dirty)" style="color:red;font-size:0.9em;">
+          <span *ngIf="signupForm.get('signupPassword')?.errors?.['required']">Password is required.</span>
+          <span *ngIf="signupForm.get('signupPassword')?.errors?.['minlength']">Password must be at least 6 characters.</span>
+        </div>
+      </div>
+      <div>
+        <label for="signupConfirmPassword">Confirm Password</label><br>
+        <input type="password" id="signupConfirmPassword" formControlName="signupConfirmPassword">
+        <div *ngIf="signupForm.hasError('mismatch') && (signupForm.get('signupConfirmPassword')?.touched || signupForm.get('signupConfirmPassword')?.dirty)" style="color:red;font-size:0.9em;">
+          Passwords do not match.
+        </div>
+        <div *ngIf="signupForm.get('signupConfirmPassword')?.invalid && (signupForm.get('signupConfirmPassword')?.touched || signupForm.get('signupConfirmPassword')?.dirty)" style="color:red;font-size:0.9em;">
+          <span *ngIf="signupForm.get('signupConfirmPassword')?.errors?.['required']">Confirm Password is required.</span>
+        </div>
+      </div>
+      <div>
+        <label for="signupRole">Role</label><br>
+        <select id="signupRole" formControlName="signupRole">
+          <option value="" disabled>Select role</option>
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
+        <div *ngIf="signupForm.get('signupRole')?.invalid && (signupForm.get('signupRole')?.touched || signupForm.get('signupRole')?.dirty)" style="color:red;font-size:0.9em;">
+          <span *ngIf="signupForm.get('signupRole')?.errors?.['required']">Role is required.</span>
+        </div>
+      </div>
+      <button type="submit" [disabled] = "signupForm.invalid">Sign Up</button>
+      <span *ngIf="signupForm?.errors?.['mismatch']">Passwords do not match!</span>
+    </form>
+  </div>
+</div>
