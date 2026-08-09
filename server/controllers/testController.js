@@ -1,4 +1,5 @@
 const pool = require('../models/db');
+const { gradeDescriptiveResponse } = require('../services/gradingService');
 
 // GET /test?classId=...
 exports.getTestsByClass = async (req, res) => {
@@ -206,6 +207,49 @@ exports.updateTest = async (req, res) => {
     if (err.code === '23514') {
       return res.status(400).json({ error: 'Invalid status value, or end_time is not after start_time' });
     }
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /test/:id/regrade  (teacher/admin only)
+// Retries grading for any descriptive responses on this test still sitting at marks = NULL
+// - the fallback path for submissions where the synchronous LLM call failed.
+exports.regradeTest = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const testResult = await pool.query('SELECT * FROM tests WHERE id = $1', [id]);
+    if (testResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Test not found' });
+    }
+    const test = testResult.rows[0];
+
+    if (req.user.role === 'teacher' && test.author_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the test author can regrade this test' });
+    }
+
+    const ungraded = await pool.query(
+      `SELECT r.id AS response_id, r.answer, q.*
+       FROM responses r
+       JOIN questions q ON q.id = r.question_id
+       WHERE r.test_id = $1 AND r.marks IS NULL AND q.question_type = 'descriptive'`,
+      [id]
+    );
+
+    let gradedCount = 0;
+    for (const row of ungraded.rows) {
+      const graded = await gradeDescriptiveResponse({ testId: id, question: row, studentAnswer: row.answer });
+      if (graded) {
+        await pool.query(
+          `UPDATE responses SET marks = $1, similarity_score = $2, feedback = $3, graded_at = $4 WHERE id = $5`,
+          [graded.marks, graded.similarity_score, graded.feedback, graded.graded_at, row.response_id]
+        );
+        gradedCount++;
+      }
+    }
+
+    res.status(200).json({ attempted: ungraded.rows.length, graded: gradedCount });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };

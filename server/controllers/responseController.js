@@ -1,4 +1,5 @@
 const pool = require('../models/db');
+const { gradeDescriptiveResponse } = require('../services/gradingService');
 
 // GET /response → get responses visible to the caller
 // students see their own; teachers see responses for tests they authored; admins see everything.
@@ -54,8 +55,10 @@ exports.getResponseById = async (req, res) => {
 };
 
 // POST /response  { test_id, question_id, answer }  (student only)
-// MCQ answers are auto-graded immediately; descriptive answers are left ungraded
-// (marks = NULL) for the LLM evaluation pipeline or a teacher to score later.
+// MCQ answers are auto-graded immediately. Descriptive answers are graded synchronously
+// by the LLM pipeline (retrieval + Claude-as-judge); if that call fails, the response is
+// still saved with marks = NULL so the answer isn't lost - a teacher can retry it later
+// via POST /test/:id/regrade.
 exports.submitResponse = async (req, res) => {
   const { test_id, question_id, answer } = req.body;
   const studentId = req.user.id;
@@ -104,17 +107,25 @@ exports.submitResponse = async (req, res) => {
     const question = questionResult.rows[0];
 
     let marks = null;
+    let similarity_score = null;
+    let feedback = null;
     let graded_at = null;
+
     if (question.question_type === 'MCQ') {
       marks = answer === question.correct_answer ? question.maximum_marks : 0;
       graded_at = new Date();
+    } else {
+      const graded = await gradeDescriptiveResponse({ testId: test_id, question, studentAnswer: answer });
+      if (graded) {
+        ({ marks, similarity_score, feedback, graded_at } = graded);
+      }
     }
 
     const inserted = await pool.query(
-      `INSERT INTO responses (test_id, student_id, question_id, answer, marks, graded_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO responses (test_id, student_id, question_id, answer, marks, similarity_score, feedback, graded_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [test_id, studentId, question_id, answer, marks, graded_at]
+      [test_id, studentId, question_id, answer, marks, similarity_score, feedback, graded_at]
     );
 
     res.status(201).json(inserted.rows[0]);

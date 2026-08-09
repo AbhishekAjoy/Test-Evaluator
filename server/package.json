@@ -11,12 +11,17 @@
   "author": "Abhishek Menon",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
+    "@huggingface/transformers": "^4.2.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.0"
+    "multer": "^2.2.0",
+    "pdf-parse": "^2.4.5",
+    "pg": "^8.16.0",
+    "pgvector": "^0.3.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
