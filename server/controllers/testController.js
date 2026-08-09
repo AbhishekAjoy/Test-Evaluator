@@ -164,3 +164,48 @@ exports.addQuestionsToTest = async (req, res) => {
     client.release();
   }
 };
+
+// PATCH /test/:id  { title?, description?, start_time?, end_time?, status?, results_published? }
+exports.updateTest = async (req, res) => {
+  const { id } = req.params;
+  const { title, description, start_time, end_time, status, results_published } = req.body;
+
+  try {
+    const existing = await pool.query('SELECT * FROM tests WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Test not found' });
+    }
+    const test = existing.rows[0];
+
+    if (req.user.role === 'teacher' && test.author_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the test author can update this test' });
+    }
+
+    // Results can't go out while the test is still open (or never happened) for submissions.
+    const nextStatus = status !== undefined ? status : test.status;
+    if (results_published === true && nextStatus !== 'closed') {
+      return res.status(400).json({ error: 'Results can only be published once the test is closed' });
+    }
+
+    const updated = await pool.query(
+      `UPDATE tests
+       SET title = COALESCE($1, title),
+           description = COALESCE($2, description),
+           start_time = COALESCE($3, start_time),
+           end_time = COALESCE($4, end_time),
+           status = COALESCE($5, status),
+           results_published = COALESCE($6, results_published),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $7
+       RETURNING *`,
+      [title, description, start_time, end_time, status, results_published, id]
+    );
+
+    res.status(200).json(updated.rows[0]);
+  } catch (err) {
+    if (err.code === '23514') {
+      return res.status(400).json({ error: 'Invalid status value, or end_time is not after start_time' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+};

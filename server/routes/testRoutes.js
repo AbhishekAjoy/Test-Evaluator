@@ -7,5 +7,6 @@ router.get('/test', testController.getTestsByClass);           // ?classId=...
 router.get('/test/questions', testController.getQuestionsByTest); // ?testId=...
 router.post('/test', requireRole('teacher', 'admin'), testController.createTest);
 router.post('/test/:testId/questions', requireRole('teacher', 'admin'), testController.addQuestionsToTest);
+router.patch('/test/:id', requireRole('teacher', 'admin'), testController.updateTest);
 
 module.exports = router;
