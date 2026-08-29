@@ -1,5 +1,5 @@
 const pool = require('../models/db');
-const { embedText, gradeAnswer } = require('./llmService');
+const { embedText, scoreAnswer } = require('./localModelService');
 const { toSql } = require('pgvector/pg');
 
 const TOP_K_CHUNKS = 4;
@@ -43,8 +43,8 @@ async function getContextForQuestion(testId, questionId, questionText, reference
 }
 
 // Grades a single descriptive response. Returns the grading result, or null if grading
-// could not complete (e.g. the LLM call failed) - the caller leaves marks as NULL so the
-// response stays a valid candidate for a later retry via the regrade endpoint.
+// could not complete (e.g. a model failed to load) - the caller leaves marks as NULL so
+// the response stays a valid candidate for a later retry via the regrade endpoint.
 async function gradeDescriptiveResponse({ testId, question, studentAnswer }) {
   try {
     const contextText = await getContextForQuestion(
@@ -54,8 +54,7 @@ async function gradeDescriptiveResponse({ testId, question, studentAnswer }) {
       question.reference_answer
     );
 
-    const result = await gradeAnswer({
-      questionText: question.question,
+    const result = await scoreAnswer({
       referenceAnswer: question.reference_answer,
       contextText,
       studentAnswer,

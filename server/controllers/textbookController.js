@@ -2,7 +2,7 @@ const fs = require('fs');
 const pdfParse = require('pdf-parse');
 const pool = require('../models/db');
 const { chunkText } = require('../services/textChunker');
-const { embedTexts } = require('../services/llmService');
+const { embedTexts } = require('../services/localModelService');
 const { toSql } = require('pgvector/pg');
 
 // POST /textbook  multipart/form-data: { class_id, title, file }  (teacher/admin only)
