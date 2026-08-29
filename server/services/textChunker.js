@@ -34,7 +34,10 @@ function chunkText(text) {
 }
 
 function splitBySentence(text) {
-  return text.split(/(?<=[.!?])\s+/);
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
-module.exports = { chunkText };
+module.exports = { chunkText, splitBySentence };
