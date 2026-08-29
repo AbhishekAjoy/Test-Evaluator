@@ -1,0 +1,26 @@
+<div class="auth-container">
+    <div class="auth-forms">
+    <!-- Login Form -->
+    <form class="auth-form" [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()">
+      <h2>Login</h2>
+      <div>
+        <label for="loginEmail">Email</label><br>
+        <input type="email" id="loginEmail" formControlName="loginEmail">
+        <div *ngIf="loginForm.get('loginEmail')?.invalid && (loginForm.get('loginEmail')?.touched || loginForm.get('loginEmail')?.dirty)" style="color:red;font-size:0.9em;">
+          <span *ngIf="loginForm.get('loginEmail')?.errors?.['required']">Email is required.</span>
+          <span *ngIf="loginForm.get('loginEmail')?.errors?.['email']">Invalid email.</span>
+        </div>
+      </div>
+      <div>
+        <label for="loginPassword">Password</label><br>
+        <input type="password" id="loginPassword" formControlName="loginPassword">
+        <div *ngIf="loginForm.get('loginPassword')?.invalid && (loginForm.get('loginPassword')?.touched || loginForm.get('loginPassword')?.dirty)" style="color:red;font-size:0.9em;">
+          <span *ngIf="loginForm.get('loginPassword')?.errors?.['required']">Password is required.</span>
+          <span *ngIf="loginForm.get('loginPassword')?.errors?.['minlength']">Password must be at least 6 characters.</span>
+        </div>
+      </div>
+      <div *ngIf="loginError" style="color:red;font-size:0.9em;">{{ loginError }}</div>
+      <button type="submit" [disabled]="loginForm.invalid">Login</button>
+    </form>
+  </div>
+</div>
