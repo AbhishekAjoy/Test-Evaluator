@@ -40,6 +40,8 @@ exports.login = async (req, res) => {
     const isMatch = await bcrypt.compare(loginPassword, user.password_hash);
     if (!isMatch) return res.status(401).json({ error: 'Invalid email or password' });
 
+    if (!user.is_active) return res.status(403).json({ error: 'Account is deactivated' });
+
     const token = generateToken(user);
 
     res.json({ message: 'Login successful', token });

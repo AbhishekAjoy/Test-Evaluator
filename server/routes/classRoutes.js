@@ -9,7 +9,7 @@ router.post('/', classController.createClass);
 router.post('/add-teacher', classController.addTeacherToClass);
 router.post('/add-student', classController.addStudentToClass);
 router.get('/', classController.getClasses);
-router.get('/view-students', classController.getClassStudents);
-router.get('/view-teachers', classController.getClassTeachers);
+router.get('/view-students/:classId', classController.getClassStudents);
+router.get('/view-teachers/:classId', classController.getClassTeachers);
 
 module.exports = router;

@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18-trixie
+    container_name: ateserver-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mintwhale@25
+      POSTGRES_DB: atedb
+    ports:
+      - "5433:5432" # 5432 is taken by the native Windows Postgres install
+    volumes:
+      - ateserver-pgdata:/var/lib/postgresql
+
+volumes:
+  ateserver-pgdata:

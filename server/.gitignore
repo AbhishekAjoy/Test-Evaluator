@@ -13,6 +13,9 @@ npm-debug.log*
 # IDEs and editors
 .vscode/
 
+# Uploaded textbook files (stored on disk, not in git)
+uploads/
+
 # Git
 .git/
 

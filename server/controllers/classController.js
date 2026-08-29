@@ -19,7 +19,7 @@ exports.getClasses = async (req, res) => {
       `SELECT c.id, c.name, c.description
        FROM classes c`
     );
-    res.status(200).json({ students: result.rows });
+    res.status(200).json({ classes: result.rows });
   } catch(err) {
     res.status(500).json({ error: err.message });
   }
@@ -52,7 +52,7 @@ exports.addTeacherToClass = async (req, res) => {
 };
 
 exports.getClassStudents = async (req, res) => {
-  const { classId } = req.body;
+  const { classId } = req.params;
   try {
     const result = await pool.query(
       `SELECT u.id, u.name, u.email
@@ -69,13 +69,13 @@ exports.getClassStudents = async (req, res) => {
 };
 
 exports.getClassTeachers = async (req, res) => {
-  const { classId } = req.body;
+  const { classId } = req.params;
   try {
     const result = await pool.query(
       `SELECT u.id, u.name, u.email
             FROM users u
             JOIN class_teachers ct ON ct.teacher_id = u.id
-            WHERE cs.class_id = $1 AND u.role = 'teacher'`,
+            WHERE ct.class_id = $1 AND u.role = 'teacher'`,
       [classId]
     );
     res.status(200).json({ teachers: result.rows });

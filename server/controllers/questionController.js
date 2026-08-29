@@ -26,13 +26,20 @@ exports.getQuestionById = async (req, res) => {
 
 // POST /question
 exports.createQuestion = async (req, res) => {
-  const { question, referenceAnswer, questionType, options, maximumMarks } = req.body;
+  const { question, question_type, reference_answer, correct_answer, options, maximum_marks } = req.body;
+
+  if (question_type === 'MCQ' && (!correct_answer || !options || options.length < 2)) {
+    return res.status(400).json({ error: 'MCQ questions require at least two options and a correct_answer' });
+  }
+  if (question_type === 'descriptive' && !reference_answer) {
+    return res.status(400).json({ error: 'Descriptive questions require a reference_answer' });
+  }
 
   try {
     const result = await pool.query(
-      `INSERT INTO questions (question, referenceAnswer, questionType, options, maximumMarks)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [question, referenceAnswer, questionType, options || null, maximumMarks || 1]
+      `INSERT INTO questions (question, reference_answer, question_type, options, maximum_marks, correct_answer, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [question, reference_answer || null, question_type, options || null, maximum_marks || 1, correct_answer || null, req.user.id]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -43,7 +50,7 @@ exports.createQuestion = async (req, res) => {
 // PATCH /question/:id
 exports.updateQuestion = async (req, res) => {
   const { id } = req.params;
-  const { question, referenceAnswer, questionType, options, maximumMarks } = req.body;
+  const { question, reference_answer, question_type, options, maximum_marks, correct_answer } = req.body;
 
   try {
     const existing = await pool.query('SELECT * FROM questions WHERE id = $1', [id]);
@@ -54,13 +61,14 @@ exports.updateQuestion = async (req, res) => {
     const updated = await pool.query(
       `UPDATE questions
        SET question = COALESCE($1, question),
-           referenceAnswer = COALESCE($2, referenceAnswer),
-           questionType = COALESCE($3, questionType),
+           reference_answer = COALESCE($2, reference_answer),
+           question_type = COALESCE($3, question_type),
            options = COALESCE($4, options),
-           maximumMarks = COALESCE($5, maximumMarks)
-       WHERE id = $6
+           maximum_marks = COALESCE($5, maximum_marks),
+           correct_answer = COALESCE($6, correct_answer)
+       WHERE id = $7
        RETURNING *`,
-      [question, referenceAnswer, questionType, options, maximumMarks, id]
+      [question, reference_answer, question_type, options, maximum_marks, correct_answer, id]
     );
 
     res.status(200).json(updated.rows[0]);
