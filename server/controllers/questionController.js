@@ -1,6 +1,14 @@
 const pool = require('../models/db');
 
-// GET /questions
+// Only the teacher who created a question (or an admin) may modify/delete it.
+// A null created_by (a question predating ownership tracking) falls back to
+// permissive - there's no owner recorded to check against.
+function canModify(user, question) {
+  if (user.role === 'admin') return true;
+  return question.created_by === null || question.created_by === user.id;
+}
+
+// GET /questions  (teacher/admin only - this is the raw question bank, answers included)
 exports.getAllQuestions = async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM questions');
@@ -10,7 +18,7 @@ exports.getAllQuestions = async (req, res) => {
   }
 };
 
-// GET /question/:id
+// GET /question/:id  (teacher/admin only)
 exports.getQuestionById = async (req, res) => {
   const { id } = req.params;
   try {
@@ -24,7 +32,7 @@ exports.getQuestionById = async (req, res) => {
   }
 };
 
-// POST /question
+// POST /question  (teacher/admin only)
 exports.createQuestion = async (req, res) => {
   const { question, question_type, reference_answer, correct_answer, options, maximum_marks } = req.body;
 
@@ -47,7 +55,7 @@ exports.createQuestion = async (req, res) => {
   }
 };
 
-// PATCH /question/:id
+// PATCH /question/:id  (the question's own creator, or admin)
 exports.updateQuestion = async (req, res) => {
   const { id } = req.params;
   const { question, reference_answer, question_type, options, maximum_marks, correct_answer } = req.body;
@@ -56,6 +64,9 @@ exports.updateQuestion = async (req, res) => {
     const existing = await pool.query('SELECT * FROM questions WHERE id = $1', [id]);
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Question not found' });
+    }
+    if (!canModify(req.user, existing.rows[0])) {
+      return res.status(403).json({ error: 'Only the question author can update this question' });
     }
 
     const updated = await pool.query(
@@ -77,14 +88,19 @@ exports.updateQuestion = async (req, res) => {
   }
 };
 
-// DELETE /question/:id
+// DELETE /question/:id  (the question's own creator, or admin)
 exports.deleteQuestion = async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await pool.query('DELETE FROM questions WHERE id = $1 RETURNING *', [id]);
-    if (result.rows.length === 0) {
+    const existing = await pool.query('SELECT * FROM questions WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
       return res.status(404).json({ error: 'Question not found' });
     }
+    if (!canModify(req.user, existing.rows[0])) {
+      return res.status(403).json({ error: 'Only the question author can delete this question' });
+    }
+
+    const result = await pool.query('DELETE FROM questions WHERE id = $1 RETURNING *', [id]);
     res.status(200).json({ message: 'Question deleted', deleted: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });

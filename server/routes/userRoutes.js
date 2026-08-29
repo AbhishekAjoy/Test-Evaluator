@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const requireRole = require('../middlewares/roleMiddleware');
 
-router.post('/',userController.createUser);
 router.post('/login', userController.login);
-// Add other routes: GET, PUT, DELETE
+router.post('/', authMiddleware, requireRole('admin'), userController.createUser);
+router.post('/bulk', authMiddleware, requireRole('admin'), userController.bulkCreateUsers);
+router.patch('/:id/status', authMiddleware, requireRole('admin'), userController.setUserStatus);
 
 module.exports = router;

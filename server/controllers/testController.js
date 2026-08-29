@@ -1,5 +1,31 @@
 const pool = require('../models/db');
 const { gradeDescriptiveResponse } = require('../services/gradingService');
+const { hasClassAccess } = require('../utils/classAccess');
+
+// Whether a user may see a given test at all: admin always, the test's author, a
+// teacher assigned (via class_teachers) to any class the test is assigned to, or a
+// student enrolled in one of those classes.
+async function hasTestAccess(user, test) {
+  if (user.role === 'admin' || test.author_id === user.id) return true;
+
+  const role = user.role === 'teacher' ? 'ct.teacher_id' : 'cs.student_id';
+  const table = user.role === 'teacher' ? 'class_teachers ct' : 'class_students cs';
+  const joinCol = user.role === 'teacher' ? 'ct.class_id' : 'cs.class_id';
+
+  const result = await pool.query(
+    `SELECT 1 FROM test_classes tc
+     JOIN ${table} ON ${joinCol} = tc.class_id
+     WHERE tc.test_id = $1 AND ${role} = $2`,
+    [test.id, user.id]
+  );
+  return result.rows.length > 0;
+}
+
+// A student never sees answer key fields, regardless of how the question was reached.
+function stripAnswersForStudent(rows, user) {
+  if (user.role !== 'student') return rows;
+  return rows.map(({ reference_answer, correct_answer, created_by, ...rest }) => rest);
+}
 
 // GET /test?classId=...
 exports.getTestsByClass = async (req, res) => {
@@ -10,11 +36,18 @@ exports.getTestsByClass = async (req, res) => {
   }
 
   try {
+    const allowed = await hasClassAccess(req.user, classId);
+    if (!allowed) {
+      return res.status(403).json({ error: 'You do not have access to this class' });
+    }
+
+    // Students never see drafts still being prepared.
+    const statusFilter = req.user.role === 'student' ? "AND t.status != 'draft'" : '';
     const result = await pool.query(
       `SELECT t.*
        FROM tests t
        JOIN test_classes tc ON t.id = tc.test_id
-       WHERE tc.class_id = $1`,
+       WHERE tc.class_id = $1 ${statusFilter}`,
       [classId]
     );
 
@@ -26,6 +59,9 @@ exports.getTestsByClass = async (req, res) => {
 };
 
 // GET /test/questions?testId=...
+// Answer fields (reference_answer, correct_answer) are stripped for students - this is
+// the endpoint a student calls to render the test they're about to take, so leaking
+// those fields here would hand out the answer key directly.
 exports.getQuestionsByTest = async (req, res) => {
   const { testId } = req.query;
 
@@ -34,6 +70,19 @@ exports.getQuestionsByTest = async (req, res) => {
   }
 
   try {
+    const testResult = await pool.query('SELECT * FROM tests WHERE id = $1', [testId]);
+    if (testResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Test not found' });
+    }
+    const test = testResult.rows[0];
+
+    if (req.user.role === 'student' && test.status === 'draft') {
+      return res.status(403).json({ error: 'This test is not available yet' });
+    }
+    if (!(await hasTestAccess(req.user, test))) {
+      return res.status(403).json({ error: 'You do not have access to this test' });
+    }
+
     const result = await pool.query(
       `SELECT q.*, tq.position
        FROM questions q
@@ -43,7 +92,7 @@ exports.getQuestionsByTest = async (req, res) => {
       [testId]
     );
 
-    res.status(200).json(result.rows);
+    res.status(200).json(stripAnswersForStudent(result.rows, req.user));
   } catch (err) {
     console.error('Error fetching questions for test:', err);
     res.status(500).json({ error: 'Internal server error' });

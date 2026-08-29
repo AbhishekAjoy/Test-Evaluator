@@ -4,6 +4,7 @@ const pool = require('../models/db');
 const { chunkText } = require('../services/textChunker');
 const { embedTexts } = require('../services/localModelService');
 const { toSql } = require('pgvector/pg');
+const { hasClassAccess } = require('../utils/classAccess');
 
 // POST /textbook  multipart/form-data: { class_id, title, file }  (teacher/admin only)
 // Responds immediately once the upload is stored, then extracts/chunks/embeds the PDF
@@ -96,6 +97,10 @@ exports.getTextbooksByClass = async (req, res) => {
     return res.status(400).json({ error: 'classId query parameter is required' });
   }
   try {
+    if (!(await hasClassAccess(req.user, classId))) {
+      return res.status(403).json({ error: 'You do not have access to this class' });
+    }
+
     const result = await pool.query(
       'SELECT id, class_id, title, processing_status, uploaded_by, uploaded_at FROM textbooks WHERE class_id = $1',
       [classId]
