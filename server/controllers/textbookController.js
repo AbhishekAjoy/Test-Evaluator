@@ -1,5 +1,5 @@
 const fs = require('fs');
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 const pool = require('../models/db');
 const { chunkText } = require('../services/textChunker');
 const { embedTexts } = require('../services/localModelService');
@@ -57,7 +57,9 @@ exports.uploadTextbook = async (req, res) => {
 
 async function processTextbook(textbook) {
   const buffer = fs.readFileSync(textbook.file_path);
-  const { text } = await pdfParse(buffer);
+  const parser = new PDFParse({ data: buffer });
+  const { text } = await parser.getText();
+  await parser.destroy();
 
   const chunks = chunkText(text);
   if (chunks.length === 0) {
