@@ -54,6 +54,64 @@ exports.getResponseById = async (req, res) => {
   }
 };
 
+// PATCH /response/:id  { marks, feedback? }  (the response's test author, or admin)
+// Lets a teacher correct an evaluation - the reference/textbook-similarity model that
+// auto-grades descriptive answers isn't infallible, and the schema (original_marks,
+// graded_by) was built for this from the start but never had an endpoint. original_marks
+// only ever captures the value from BEFORE the first override - COALESCE means a second
+// override doesn't overwrite it with the previous override's value, it stays pinned to
+// whatever the auto-grader originally produced. graded_by being non-null is how a
+// response is later distinguished as human-corrected vs still auto-graded as-is.
+exports.overrideResponse = async (req, res) => {
+  const { id } = req.params;
+  const { marks, feedback } = req.body;
+
+  if (typeof marks !== 'number' || Number.isNaN(marks)) {
+    return res.status(400).json({ error: 'marks (number) is required' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT r.*, t.author_id AS test_author_id, q.maximum_marks
+       FROM responses r
+       JOIN tests t ON t.id = r.test_id
+       JOIN questions q ON q.id = r.question_id
+       WHERE r.id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Response not found' });
+    }
+    const response = result.rows[0];
+
+    if (req.user.role === 'teacher' && response.test_author_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the test author can override this response' });
+    }
+    if (marks < 0 || marks > response.maximum_marks) {
+      return res.status(400).json({ error: `marks must be between 0 and ${response.maximum_marks}` });
+    }
+
+    const updated = await pool.query(
+      `UPDATE responses
+       SET marks = $1,
+           feedback = COALESCE($2, feedback),
+           original_marks = COALESCE(original_marks, marks),
+           graded_by = $3,
+           graded_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING *`,
+      [marks, feedback, req.user.id, id]
+    );
+
+    res.status(200).json(updated.rows[0]);
+  } catch (err) {
+    if (err.code === '23514') {
+      return res.status(400).json({ error: 'Invalid marks value' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // POST /response  { test_id, question_id, answer }  (student only)
 // MCQ answers are auto-graded immediately. Descriptive answers are graded synchronously
 // by the LLM pipeline (retrieval + Claude-as-judge); if that call fails, the response is

@@ -6,5 +6,6 @@ const requireRole = require('../middlewares/roleMiddleware');
 router.get('/response', responseController.getAllResponses);
 router.get('/response/:id', responseController.getResponseById);
 router.post('/response', requireRole('student'), responseController.submitResponse);
+router.patch('/response/:id', requireRole('teacher', 'admin'), responseController.overrideResponse);
 
 module.exports = router;

@@ -10,6 +10,22 @@ function friendlyDbError(err) {
   return err.message;
 }
 
+// GET /  (admin only)  ?role= optional filter
+exports.listUsers = async (req, res) => {
+  const { role } = req.query;
+  try {
+    const result = role
+      ? await pool.query(
+          'SELECT id, name, email, role, is_active, created_at, updated_at FROM users WHERE role = $1 ORDER BY id',
+          [role]
+        )
+      : await pool.query('SELECT id, name, email, role, is_active, created_at, updated_at FROM users ORDER BY id');
+    res.status(200).json({ users: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // POST /  (admin only) - create a single account of any role.
 // No token is issued here - it belongs to the new account, not the admin creating it.
 exports.createUser = async (req, res) => {
