@@ -36,8 +36,7 @@ export class LoginComponent {
         password: this.loginForm.value.loginPassword!,
       };
       this.authService.login(credentials).subscribe({
-        next: (res) => {
-          this.authService.setToken(res.token);
+        next: () => {
           this.loginForm.reset();
           const role = this.authService.currentUser()?.role ?? '';
           this.router.navigateByUrl(this.authService.homePathForRole(role));
